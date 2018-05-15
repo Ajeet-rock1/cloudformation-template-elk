@@ -1,0 +1,117 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation templates to create elk-cluster-acroos-zones AWS Elasticsearch Service domain.",
+    "Parameters": {
+        "NodeType": {
+            "Description": "The node type to be provisioned for the Elasticsearch cluster",
+            "Type": "String",
+            "Default": "t2.medium.elasticsearch",
+            "AllowedValues": [
+                "t2.small.elasticsearch",
+                "t2.medium.elasticsearch",
+                "m4.large.elasticsearch",
+                "m4.xlarge.elasticsearch",
+                "c4.large.elasticsearch",
+                "c4.xlarge.elasticsearch",
+                "r4.large.elasticsearch",
+                "r4.xlarge.elasticsearch"
+            ],
+            "ConstraintDescription": "must be a valid Elasticsearch node type."
+        },
+        "NodeCount": {
+            "Description": "The number of nodes in the Elasticsearch cluster.",
+            "Type": "Number",
+            "Default": "2"
+        }
+    },
+    "Resources": {
+        "ElasticsearchDomain": {
+            "Type": "AWS::Elasticsearch::Domain",
+            "Properties": {
+                "DomainName": "elk",
+                "ElasticsearchClusterConfig": {
+                    "DedicatedMasterEnabled": "false",
+                    "InstanceCount": {
+                        "Ref": "NodeCount"
+                    },
+                    "ZoneAwarenessEnabled": "true",
+                    "InstanceType": {
+                        "Ref": "NodeType"
+                    }
+                },
+                "ElasticsearchVersion": "6.2",
+                "AccessPolicies": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "es:ESHttpGet",
+                                "es:ESHttpPut",
+                                "es:ESHttpPost",
+                                "es:ESHttpHead"
+                            ],
+                            "Principal": "*",
+                            "Effect": "Allow",
+                            "Condition": {
+                                "IpAddress": {
+                                    "aws:SourceIp": [
+                                        "your desktop ip"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                "EBSOptions": {
+                    "EBSEnabled": true,
+                    "Iops": 0,
+                    "VolumeSize": 50,
+                    "VolumeType": "gp2"
+                },
+                "SnapshotOptions": {
+                    "AutomatedSnapshotStartHour": "0"
+                },
+                "AdvancedOptions": {
+                    "rest.action.multi.allow_explicit_index": "true"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "KibanaURL": {
+            "Description": "Kibana URL",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Fn::GetAtt": [
+                                "ElasticsearchDomain",
+                                "DomainEndpoint"
+                            ]
+                        },
+                        "/_plugin/kibana/"
+                    ]
+                ]
+            }
+        },
+        "ElasticsearchEndpoint": {
+            "Description": "Elasticsearch domain endpoint",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ElasticsearchDomain",
+                    "DomainEndpoint"
+                ]
+            }
+        },
+        "ElasticsearchDomainARN": {
+            "Description": "Elasticsearch domain ARN",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ElasticsearchDomain",
+                    "DomainArn"
+                ]
+            }
+        }
+    }
+}
